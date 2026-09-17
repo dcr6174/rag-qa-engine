@@ -1,5 +1,6 @@
 # Core (API + evaluation)
 fastapi>=0.110
+pypdf>=4.0  # PDF ingestion with page-anchored citations (pure Python)
 uvicorn[standard]>=0.29
 pydantic>=2.6
 numpy>=1.26

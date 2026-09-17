@@ -6,3 +6,6 @@
 {"question": "Why use a hashing embedder in unit tests?", "expected_sources": ["testing_strategy.md"]}
 {"question": "What do integration tests assert about retrieval?", "expected_sources": ["testing_strategy.md"]}
 {"question": "How are metric drops treated in regression evaluation?", "expected_sources": ["testing_strategy.md"]}
+{"question": "Who won the 2019 cricket world cup?", "expected_sources": [], "unanswerable": true}
+{"question": "What is the airspeed velocity of an unladen swallow?", "expected_sources": [], "unanswerable": true}
+{"question": "How do I configure Kubernetes pod autoscaling?", "expected_sources": [], "unanswerable": true}

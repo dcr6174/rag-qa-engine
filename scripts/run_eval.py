@@ -15,12 +15,17 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     pipeline = RAGPipeline()
     chunks = pipeline.ingest_paths([ROOT / "sample_data"])
-    print(f"indexed {chunks} chunks from sample_data/")
+    print(f"indexed {len(pipeline.store)} chunks from sample_data/ ({chunks} newly embedded)")
     report = evaluate(pipeline, load_qa_pairs(ROOT / "eval" / "qa_pairs.jsonl"))
     print(report.summary())
     for detail in report.details:
-        flag = "HIT " if detail["hit"] else "MISS"
-        print(f"[{flag}] {detail['question']} (rank={detail['rank']}, faithfulness={detail['faithfulness']})")
+        if detail.get("unanswerable"):
+            flag = "ABSTAINED" if detail["abstained"] else "FALSE-ANSWER"
+            print(f"[{flag}] {detail['question']}")
+        else:
+            flag = "HIT " if detail["hit"] else "MISS"
+            extra = " (abstained)" if detail.get("abstained") else ""
+            print(f"[{flag}] {detail['question']} (rank={detail['rank']}, faithfulness={detail['faithfulness']}){extra}")
 
 
 if __name__ == "__main__":

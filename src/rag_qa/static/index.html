@@ -6,7 +6,7 @@
   <meta name="description" content="Ask questions and get cited answers from your own documents.">
   <title>Grounded - Document Q&A</title>
   <style>
-    :root { color-scheme: light; --ink:#17211b; --muted:#667069; --line:#dfe5df; --paper:#fbfcf9; --card:#fff; --green:#276749; --green-soft:#eaf4ed; --shadow:0 18px 50px rgba(34,55,42,.08); }
+    :root { color-scheme: light; --ink:#17211b; --muted:#667069; --line:#dfe5df; --paper:#fbfcf9; --card:#fff; --green:#276749; --green-soft:#eaf4ed; --amber:#9a6a1a; --amber-soft:#faf3e3; --shadow:0 18px 50px rgba(34,55,42,.08); }
     * { box-sizing:border-box; }
     body { margin:0; min-height:100vh; background:radial-gradient(circle at 15% 0%,#edf5eb 0,transparent 32rem),var(--paper); color:var(--ink); font:16px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
     button,input { font:inherit; }
@@ -33,29 +33,61 @@
     button { padding:14px 22px; border:0; border-radius:13px; background:var(--ink); color:white; font-weight:700; cursor:pointer; transition:.2s; }
     button:hover { background:#2b3d31; transform:translateY(-1px); }
     button:disabled { opacity:.52; cursor:not-allowed; transform:none; }
+    button.ghost { background:var(--green-soft); color:var(--green); }
+    button.ghost:hover { background:#dcecdf; }
     .status { min-height:24px; margin:12px 0 0; color:var(--muted); font-size:.87rem; }
     .status.error { color:#a13f39; }
-    #result[hidden] { display:none; }
-    .answer { margin:0; font-family:Georgia,"Times New Roman",serif; font-size:1.3rem; line-height:1.65; }
+    #result[hidden],#evalResult[hidden] { display:none; }
+    .rewritten { margin:0 0 10px; color:var(--muted); font-size:.82rem; font-style:italic; }
+    .answer { margin:0; font-family:Georgia,"Times New Roman",serif; font-size:1.3rem; line-height:1.75; }
+    .sentence { border-radius:6px; padding:1px 3px; margin:0 -3px; cursor:pointer; transition:background .15s; }
+    .sentence:hover { background:var(--green-soft); }
+    .sentence.active { background:#dcecdf; }
+    .sentence.unsupported { background:var(--amber-soft); box-shadow:inset 0 -2px 0 #e2b45c; }
+    .cite-ref { font:700 .68rem/1 Inter,sans-serif; color:var(--green); vertical-align:super; padding-left:2px; }
+    .unsupported-note { display:flex; gap:9px; align-items:flex-start; margin:14px 0 0; padding:12px 14px; border:1px solid #ecdcb8; border-radius:12px; background:var(--amber-soft); color:var(--amber); font-size:.85rem; }
+    .abstain { padding:18px; border:1px solid #ecdcb8; border-radius:16px; background:var(--amber-soft); }
+    .abstain strong { display:block; margin-bottom:6px; color:var(--amber); font-size:1.02rem; }
+    .abstain p { margin:0; color:#7d6435; font-size:.9rem; }
     .sources-head { display:flex; align-items:center; justify-content:space-between; margin:28px 0 12px; }
     .sources-head h2 { margin:0; font-size:.84rem; letter-spacing:.1em; text-transform:uppercase; }
     .sources-head span { color:var(--muted); font-size:.8rem; }
     .sources { display:grid; gap:10px; }
-    .source { padding:16px; border:1px solid var(--line); border-radius:14px; background:#fcfdfb; }
-    .source-top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; }
-    .source-name { overflow:hidden; font-weight:730; text-overflow:ellipsis; white-space:nowrap; }
-    .score { flex:none; color:var(--green); font-size:.78rem; font-weight:720; }
-    .source p { margin:0; color:#556058; font-size:.88rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+    .source { padding:16px; border:1px solid var(--line); border-radius:14px; background:#fcfdfb; transition:border-color .15s, box-shadow .15s; }
+    .source.active { border-color:#57906a; box-shadow:0 0 0 4px rgba(87,144,106,.12); }
+    .source-top { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .rank { display:grid; flex:none; width:24px; height:24px; place-items:center; border-radius:8px; background:var(--green-soft); color:var(--green); font-size:.74rem; font-weight:800; }
+    .source-name { overflow:hidden; min-width:0; font-weight:730; text-overflow:ellipsis; white-space:nowrap; }
+    .page { flex:none; color:var(--muted); font-size:.78rem; }
+    .band { flex:none; margin-left:auto; padding:4px 10px; border-radius:99px; font-size:.72rem; font-weight:750; letter-spacing:.04em; }
+    .band.high { background:var(--green-soft); color:var(--green); }
+    .band.medium { background:var(--amber-soft); color:var(--amber); }
+    .band.low { background:#f0f1ef; color:var(--muted); }
+    .crumb { margin:0 0 6px; color:var(--muted); font-size:.76rem; }
+    .source p { margin:0; color:#556058; font-size:.88rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
+    .source mark { padding:1px 2px; border-radius:4px; background:#cfe6d4; color:inherit; }
+    details.trace { margin-top:22px; border:1px solid var(--line); border-radius:14px; background:#fcfdfb; }
+    details.trace summary { padding:13px 16px; font-size:.84rem; font-weight:730; cursor:pointer; user-select:none; }
+    .trace-wrap { overflow-x:auto; padding:0 16px 14px; }
+    table { width:100%; border-collapse:collapse; font-size:.8rem; }
+    th,td { padding:7px 10px; text-align:left; border-top:1px solid var(--line); white-space:nowrap; }
+    th { color:var(--muted); font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; }
+    td.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-top:6px; }
+    .metric { padding:14px; border:1px solid var(--line); border-radius:12px; background:#fcfdfb; }
+    .metric b { display:block; font-size:1.25rem; }
+    .metric span { color:var(--muted); font-size:.72rem; letter-spacing:.05em; text-transform:uppercase; }
+    .eval-actions { display:flex; flex-wrap:wrap; gap:10px; }
     footer { margin-top:20px; text-align:center; color:#899089; font-size:.78rem; }
-    @media (max-width:640px) { .shell{padding-top:46px}.step{padding:22px}.ask-row{flex-direction:column}button{width:100%} }
+    @media (max-width:640px) { .shell{padding-top:46px}.step{padding:22px}.ask-row{flex-direction:column}button{width:100%}.source-top{flex-wrap:wrap} }
   </style>
 </head>
 <body>
   <main class="shell">
     <header>
       <p class="eyebrow"><span class="spark"></span>Private, local document Q&amp;A</p>
-      <h1>Answers grounded in your words.</h1>
-      <p class="intro">Add Markdown or text files, ask a question, and see the exact passages behind every answer. Your documents stay on this computer.</p>
+      <h1>Answers that show their work.</h1>
+      <p class="intro">Add documents, ask a question, and see the exact span behind every sentence - or an honest "not in your documents". Your files stay on this computer.</p>
     </header>
 
     <section class="panel" aria-label="Document question answering">
@@ -63,8 +95,8 @@
         <h2 class="step-title"><span class="number">1</span>Add your documents</h2>
         <label class="drop" id="drop">
           <strong>Drop files here, or choose files</strong>
-          <span>Markdown and plain text · up to 20 files</span>
-          <input id="fileInput" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden>
+          <span>Markdown, plain text, or PDF · up to 20 files</span>
+          <input id="fileInput" type="file" accept=".md,.txt,.pdf,text/markdown,text/plain,application/pdf" multiple hidden>
         </label>
         <div id="files" aria-live="polite"></div>
         <p id="uploadStatus" class="status" aria-live="polite"></p>
@@ -80,12 +112,41 @@
       </div>
 
       <div class="step" id="result" hidden>
+        <p class="rewritten" id="rewritten" hidden></p>
+        <div id="abstainBox"></div>
         <p id="answer" class="answer"></p>
+        <div id="unsupportedNote"></div>
         <div class="sources-head"><h2>Sources</h2><span id="sourceCount"></span></div>
         <div id="sources" class="sources"></div>
+        <details class="trace" id="traceBox">
+          <summary>Retrieval trace - how these passages won</summary>
+          <div class="trace-wrap"><table>
+            <thead><tr><th>Passage</th><th>Keyword rank</th><th>Dense rank</th><th>Fused rank</th><th>Final rank</th><th>Relevance</th></tr></thead>
+            <tbody id="traceRows"></tbody>
+          </table></div>
+        </details>
+      </div>
+
+      <div class="step">
+        <h2 class="step-title"><span class="number">3</span>Evaluate on your corpus</h2>
+        <div class="eval-actions">
+          <button class="ghost" id="evalButton" type="button">Generate questions &amp; evaluate</button>
+          <button class="ghost" id="sweepButton" type="button">Run config sweep</button>
+        </div>
+        <p id="evalStatus" class="status" aria-live="polite">Measure retrieval quality on your own documents, not a benchmark.</p>
+        <div id="evalResult" hidden>
+          <div class="metrics" id="metrics"></div>
+          <details class="trace" id="sweepBox" hidden>
+            <summary>Configuration leaderboard</summary>
+            <div class="trace-wrap"><table>
+              <thead><tr><th>Chunk size</th><th>Overlap</th><th>k</th><th>hit@k</th><th>MRR</th><th>nDCG@k</th><th>Faithful</th></tr></thead>
+              <tbody id="sweepRows"></tbody>
+            </table></div>
+          </details>
+        </div>
       </div>
     </section>
-    <footer>Runs offline by default · No API key needed</footer>
+    <footer>Runs offline by default · Abstains instead of guessing · No API key needed</footer>
   </main>
 
   <script>
@@ -93,34 +154,144 @@
     const uploadStatus=document.querySelector('#uploadStatus'),askStatus=document.querySelector('#askStatus');
     const askForm=document.querySelector('#askForm'),question=document.querySelector('#question'),askButton=document.querySelector('#askButton');
     const result=document.querySelector('#result'),answer=document.querySelector('#answer'),sources=document.querySelector('#sources'),sourceCount=document.querySelector('#sourceCount');
+    const abstainBox=document.querySelector('#abstainBox'),unsupportedNote=document.querySelector('#unsupportedNote'),rewritten=document.querySelector('#rewritten');
+    const traceRows=document.querySelector('#traceRows');
+    const evalButton=document.querySelector('#evalButton'),sweepButton=document.querySelector('#sweepButton'),evalStatus=document.querySelector('#evalStatus');
+    const evalResult=document.querySelector('#evalResult'),metrics=document.querySelector('#metrics'),sweepBox=document.querySelector('#sweepBox'),sweepRows=document.querySelector('#sweepRows');
     let ready=false;
     const message=(el,text,error=false)=>{el.textContent=text;el.classList.toggle('error',error)};
     async function api(path,options){const response=await fetch(path,options);const data=await response.json();if(!response.ok)throw new Error(data.detail||'Something went wrong.');return data}
+    const BAND_LABEL={high:'high relevance',medium:'medium relevance',low:'low relevance'};
+
     async function addFiles(selected){
       const list=[...selected].slice(0,20); if(!list.length)return;
-      const invalid=list.find(file=>!(/\.(md|txt)$/i.test(file.name))); if(invalid){message(uploadStatus,`${invalid.name}: choose a .md or .txt file.`,true);return}
+      const invalid=list.find(file=>!(/\.(md|txt|pdf)$/i.test(file.name))); if(invalid){message(uploadStatus,`${invalid.name}: choose a .md, .txt, or .pdf file.`,true);return}
       filesEl.innerHTML=''; list.forEach(file=>{const chip=document.createElement('span');chip.className='file';chip.textContent=file.name;filesEl.append(chip)});
       message(uploadStatus,'Reading and indexing…'); askButton.disabled=true;
-      try { const documents=await Promise.all(list.map(async file=>({name:file.name,text:await file.text()})));
-        const data=await api('/ingest-text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documents})});
-        ready=true; message(uploadStatus,`${data.files.length} ${data.files.length===1?'file':'files'} ready · ${data.chunks_added} searchable passages`); message(askStatus,'Ready for your question.'); question.focus();
+      try {
+        const texts=list.filter(f=>!/\.pdf$/i.test(f.name)),pdfs=list.filter(f=>/\.pdf$/i.test(f.name));
+        let chunks=0,names=[];
+        if(texts.length){const documents=await Promise.all(texts.map(async file=>({name:file.name,text:await file.text()})));
+          const data=await api('/ingest-text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documents})});
+          chunks+=data.chunks_embedded; names=names.concat(data.files)}
+        for(const file of pdfs){const buffer=await file.arrayBuffer();
+          let binary='';const bytes=new Uint8Array(buffer);for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
+          const data=await api('/ingest-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documents:[{name:file.name,data_base64:btoa(binary)}]})});
+          chunks+=data.chunks_embedded; names=names.concat(data.files)}
+        ready=true; message(uploadStatus,`${names.length} ${names.length===1?'file':'files'} ready · ${chunks} new passages indexed`); message(askStatus,'Ready for your question.'); question.focus();
       } catch(error){message(uploadStatus,error.message,true)} finally{askButton.disabled=false}
     }
     fileInput.addEventListener('change',()=>addFiles(fileInput.files));
     ['dragenter','dragover'].forEach(type=>drop.addEventListener(type,event=>{event.preventDefault();drop.classList.add('drag')}));
     ['dragleave','drop'].forEach(type=>drop.addEventListener(type,event=>{event.preventDefault();drop.classList.remove('drag')}));
     drop.addEventListener('drop',event=>addFiles(event.dataTransfer.files));
+
+    function renderAnswer(data){
+      result.hidden=false; answer.innerHTML=''; abstainBox.innerHTML=''; unsupportedNote.innerHTML='';
+      if(data.rewritten_question&&data.rewritten_question!==question.value.trim()){
+        rewritten.hidden=false; rewritten.textContent=`Understood as: “${data.rewritten_question}”`;
+      } else rewritten.hidden=true;
+      if(data.abstained){
+        const box=document.createElement('div');box.className='abstain';
+        const title=document.createElement('strong');title.textContent='Not in your documents';
+        const body=document.createElement('p');body.textContent='The best passages found are below the relevance floor, so no answer was composed. The closest passages are shown below so you can judge for yourself.';
+        box.append(title,body);abstainBox.append(box);answer.hidden=true;
+      } else {
+        answer.hidden=false;
+        data.citations.forEach((citation,i)=>{
+          const span=document.createElement('span');span.className='sentence'+(citation.entailed?'':' unsupported');
+          span.dataset.index=i;span.textContent=citation.sentence+' ';
+          const ref=document.createElement('sup');ref.className='cite-ref';ref.textContent=`${citation.final_rank}`;
+          span.append(ref);span.title=citation.entailed?'Supported by the highlighted source span':'Not supported by any retrieved span - treat with care';
+          span.addEventListener('click',()=>highlightCitation(citation,span));
+          answer.append(span,document.createTextNode(' '));
+        });
+        if(data.unsupported_sentences>0){
+          const note=document.createElement('div');note.className='unsupported-note';
+          note.textContent=`${data.unsupported_sentences} ${data.unsupported_sentences===1?'sentence is':'sentences are'} not supported by any retrieved span. Unsupported sentences are shaded amber - verify them yourself.`;
+          unsupportedNote.append(note);
+        }
+      }
+    }
+
+    function highlightCitation(citation,span){
+      document.querySelectorAll('.sentence.active').forEach(el=>el.classList.remove('active'));
+      document.querySelectorAll('.source.active').forEach(el=>el.classList.remove('active'));
+      span.classList.add('active');
+      const card=document.querySelector(`.source[data-rank="${citation.final_rank}"]`);
+      if(card){card.classList.add('active');card.scrollIntoView({behavior:'smooth',block:'nearest'})}
+    }
+
+    function renderSources(data){
+      sources.innerHTML='';
+      data.sources.forEach(item=>{
+        const card=document.createElement('article');card.className='source';card.dataset.rank=item.rank;
+        const top=document.createElement('div');top.className='source-top';
+        const rank=document.createElement('span');rank.className='rank';rank.textContent=`#${item.rank}`;
+        const name=document.createElement('span');name.className='source-name';name.textContent=item.source;
+        top.append(rank,name);
+        if(item.page!=null){const page=document.createElement('span');page.className='page';page.textContent=`p. ${item.page}`;top.append(page)}
+        const band=document.createElement('span');band.className=`band ${item.band}`;band.textContent=BAND_LABEL[item.band]||item.band;top.append(band);
+        card.append(top);
+        if(item.breadcrumb){const crumb=document.createElement('p');crumb.className='crumb';crumb.textContent=item.breadcrumb;card.append(crumb)}
+        const passage=document.createElement('p');
+        const quotes=(data.citations||[]).filter(c=>c.final_rank===item.rank).map(c=>c.quote).filter(Boolean);
+        let html='';const text=item.text;
+        if(quotes.length){const quote=quotes.sort((a,b)=>b.length-a.length)[0];const at=text.indexOf(quote);
+          if(at>=0){html=escapeHtml(text.slice(0,at))+'<mark>'+escapeHtml(text.slice(at,at+quote.length))+'</mark>'+escapeHtml(text.slice(at+quote.length))}}
+        passage.innerHTML=html||escapeHtml(text);
+        card.append(passage);sources.append(card);
+      });
+      sourceCount.textContent=`${data.sources.length} ${data.sources.length===1?'passage':'passages'}`;
+    }
+    function escapeHtml(text){const div=document.createElement('div');div.textContent=text;return div.innerHTML}
+
+    function renderTrace(data){
+      traceRows.innerHTML='';
+      (data.trace||[]).forEach(row=>{
+        const tr=document.createElement('tr');
+        const name=document.createElement('td');name.textContent=`${row.source} · chunk ${row.chunk_index??'-'}`;
+        const cell=value=>{const td=document.createElement('td');td.className='num';td.textContent=value??'–';return td};
+        const band=document.createElement('td');const pill=document.createElement('span');pill.className=`band ${row.band}`;pill.textContent=row.band;band.append(pill);
+        tr.append(name,cell(row.bm25_rank),cell(row.dense_rank),cell(row.fused_rank),cell(row.final_rank),band);
+        traceRows.append(tr);
+      });
+    }
+
     askForm.addEventListener('submit',async event=>{
       event.preventDefault(); const text=question.value.trim();
       if(!ready){message(askStatus,'Add a document first.',true);return} if(!text){message(askStatus,'Type a question first.',true);question.focus();return}
-      askButton.disabled=true; message(askStatus,'Finding the best passages…'); result.hidden=true;
+      askButton.disabled=true; message(askStatus,'Retrieving and verifying…'); result.hidden=true;
       try { const data=await api('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text})});
-        answer.textContent=data.answer; sources.innerHTML=''; data.sources.forEach(item=>{const card=document.createElement('article');card.className='source';
-          const top=document.createElement('div');top.className='source-top';const name=document.createElement('span');name.className='source-name';name.textContent=item.source;
-          const score=document.createElement('span');score.className='score';score.textContent=`${Math.max(0,Math.round(item.score*100))}% match`;const passage=document.createElement('p');passage.textContent=item.text;
-          top.append(name,score);card.append(top,passage);sources.append(card)});
-        sourceCount.textContent=`${data.sources.length} ${data.sources.length===1?'passage':'passages'}`; result.hidden=false; message(askStatus,''); result.scrollIntoView({behavior:'smooth',block:'nearest'});
+        renderAnswer(data); renderSources(data); renderTrace(data);
+        result.hidden=false; message(askStatus,''); result.scrollIntoView({behavior:'smooth',block:'nearest'});
       } catch(error){message(askStatus,error.message,true)} finally{askButton.disabled=false}
+    });
+
+    evalButton.addEventListener('click',async()=>{
+      if(!ready){message(evalStatus,'Add documents first.',true);return}
+      evalButton.disabled=true; message(evalStatus,'Generating questions from your corpus and measuring retrieval…');
+      try { const data=await api('/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({generate:true,max_generated:12})});
+        metrics.innerHTML='';
+        const items=[['hit@k',data.hit_at_k],['MRR',data.mrr],['nDCG@k',data.ndcg_at_k],['faithfulness',data.faithfulness],['abstained',data.abstention_rate],['questions',data.questions]];
+        items.forEach(([label,value])=>{const card=document.createElement('div');card.className='metric';
+          const b=document.createElement('b');b.textContent=typeof value==='number'&&value<=1?`${Math.round(value*100)}%`:value;
+          const span=document.createElement('span');span.textContent=label;card.append(b,span);metrics.append(card)});
+        evalResult.hidden=false; sweepBox.hidden=true; message(evalStatus,`Evaluated on ${data.questions} questions generated from your documents.`);
+      } catch(error){message(evalStatus,error.message,true)} finally{evalButton.disabled=false}
+    });
+
+    sweepButton.addEventListener('click',async()=>{
+      if(!ready){message(evalStatus,'Add documents first.',true);return}
+      sweepButton.disabled=true; message(evalStatus,'Re-indexing your corpus under several configurations…');
+      try { const data=await api('/sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max_configs:6})});
+        sweepRows.innerHTML='';
+        data.leaderboard.forEach(row=>{const tr=document.createElement('tr');
+          [row.chunk_size,row.overlap,row.top_k,row.hit_at_k,row.mrr,row.ndcg_at_k,row.faithfulness].forEach((value,i)=>{
+            const td=document.createElement('td');td.className='num';td.textContent=i<3?value:value.toFixed(2);tr.append(td)});
+          sweepRows.append(tr)});
+        evalResult.hidden=false; sweepBox.hidden=false; message(evalStatus,`Ranked ${data.configs} configurations on ${data.questions} questions.`);
+      } catch(error){message(evalStatus,error.message,true)} finally{sweepButton.disabled=false}
     });
   </script>
 </body>
