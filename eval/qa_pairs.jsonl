@@ -1,0 +1,8 @@
+{"question": "What are the three stages of a RAG system?", "expected_sources": ["rag_overview.md"]}
+{"question": "How does RAG reduce hallucination?", "expected_sources": ["rag_overview.md"]}
+{"question": "What does hit rate at k measure?", "expected_sources": ["evaluation_metrics.md"]}
+{"question": "What is mean reciprocal rank?", "expected_sources": ["evaluation_metrics.md"]}
+{"question": "What does faithfulness mean in answer evaluation?", "expected_sources": ["evaluation_metrics.md"]}
+{"question": "Why use a hashing embedder in unit tests?", "expected_sources": ["testing_strategy.md"]}
+{"question": "What do integration tests assert about retrieval?", "expected_sources": ["testing_strategy.md"]}
+{"question": "How are metric drops treated in regression evaluation?", "expected_sources": ["testing_strategy.md"]}
