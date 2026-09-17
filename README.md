@@ -1,135 +1,171 @@
 # rag-qa-engine
 
-A small, honest retrieval-augmented generation (RAG) service in Python.
-It ingests Markdown/text documents, retrieves the passages relevant to a
-question, and answers with citations to the sources it used. An evaluation
-harness measures retrieval quality and answer faithfulness on a labelled QA
-set, and a pytest suite keeps the deterministic components under test.
+A small, honest retrieval-augmented generation (RAG) app in Python. Add Markdown or text documents in a minimal browser interface, ask questions, and get answers with the source passages behind them.
 
-The project runs **fully offline**: a deterministic hashing embedder and an
-extractive answer generator need no downloads, API keys, or network. For
-production-quality output, swap in neural embeddings
-(`sentence-transformers`) and any OpenAI-compatible LLM endpoint with one
-environment variable each.
+The project runs **fully offline by default**. Its deterministic hashing embedder and extractive answer generator need no downloads, API keys, or network connection after installation.
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-276749) ![Tests](https://img.shields.io/badge/tests-18%20passing-276749) ![License](https://img.shields.io/badge/license-MIT-276749)
+
+## Use the browser app on Windows
+
+### 1. Install Python
+
+Install Python 3.10 or newer from [python.org](https://www.python.org/downloads/). On the installer screen, tick **Add python.exe to PATH**.
+
+### 2. Download this project
+
+Click **Code** near the top of this GitHub page, choose **Download ZIP**, and unzip it. Open the unzipped `rag-qa-engine` folder, click the address bar in File Explorer, type `powershell`, and press Enter.
+
+### 3. Install it (one time)
+
+Run these commands one at a time:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 4. Start the app
+
+```powershell
+uvicorn rag_qa.api:app --app-dir src
+```
+
+Leave PowerShell open. Visit **http://127.0.0.1:8000** in Chrome or Edge.
+
+### 5. Ask your documents
+
+1. Drop `.md` or `.txt` files into the upload area, or click it to choose files.
+2. Wait until the page says the files are ready.
+3. Type a question and click **Ask**.
+4. Read the answer and its source cards. Each card names the source file, shows its retrieval match, and includes the exact supporting passage.
+
+The browser sends document text only to the app running on your own computer. The default setup does not upload it to an external service. Stop the app with `Ctrl+C` in PowerShell.
+
+## Mac or Linux setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn rag_qa.api:app --app-dir src
+```
+
+Then open http://127.0.0.1:8000.
+
+## API
+
+The existing API remains available at http://127.0.0.1:8000/docs.
+
+```bash
+# Index the bundled sample_data folder
+curl -X POST localhost:8000/ingest -H 'content-type: application/json' -d '{}'
+
+# Ask a question
+curl -X POST localhost:8000/ask -H 'content-type: application/json' \
+  -d '{"question":"How does RAG reduce hallucination?"}'
+```
+
+Endpoints:
+
+- `GET /` - browser interface
+- `GET /health` - service and index status
+- `POST /ingest` - index `.md` and `.txt` files from server-side paths
+- `POST /ingest-text` - index browser-supplied plain-text documents without saving uploads
+- `POST /ask` - answer with ranked source passages
 
 ## Architecture
 
-```
- documents (.md/.txt)
+```text
+.md / .txt documents
         |
         v
-  chunking.py        paragraph-aware splitting with overlap
+  chunking.py       paragraph-aware splitting with overlap
         |
         v
-  embeddings.py      HashingEmbedder (offline) or SentenceTransformerEmbedder
+  embeddings.py     offline HashingEmbedder (or sentence-transformers)
         |
         v
-  store.py           normalized vectors in memory; cosine search; disk save/load
+  store.py          in-memory normalized vectors + cosine search
         |
-        v            question
-  pipeline.py  ----> retrieve top-k passages -> generate answer + citations
-        |                      ^
-        v                      |
-  api.py (FastAPI)     evaluate.py (hit@k, MRR, faithfulness)
-  /ingest /ask /health
+        v
+  pipeline.py       retrieve passages -> grounded answer + citations
+        |
+        +---- api.py + static/index.html (FastAPI API and browser UI)
+        +---- evaluate.py (hit@k, MRR, faithfulness)
 ```
 
 Design choices:
 
-- **Cited answers.** Every answer carries the passages behind it, so claims
-  are auditable. The generation prompt (when an LLM is configured) instructs
-  the model to answer only from the retrieved context.
-- **Provider-agnostic LLM layer.** `OpenAICompatibleGenerator` talks to any
-  OpenAI-compatible endpoint (OpenAI, Azure OpenAI, Ollama, vLLM) configured
-  purely through environment variables. No keys are ever written to disk.
-  Without a key, `OfflineGenerator` composes an extractive answer from the
-  highest-overlap retrieved sentences.
-- **Offline-first testing.** The deterministic hashing embedder needs no
-  model downloads, so unit and integration tests run in milliseconds in CI.
+- **Cited answers.** Every answer includes the passages behind it.
+- **Private by default.** Browser-selected files are read as text, held in memory, and not written to disk by the upload endpoint.
+- **Provider-agnostic LLM layer.** `OpenAICompatibleGenerator` can use an OpenAI-compatible endpoint configured through environment variables. Secrets are never written to the repository.
+- **Offline-first testing.** Deterministic embeddings keep tests fast and reproducible.
 
-## Quickstart
+## Tests and evaluation
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+With the virtual environment active:
 
-# run the test suite (offline, no keys needed)
-PYTHONPATH=src pytest tests/ -q
+**Windows PowerShell**
 
-# run the evaluation harness against the bundled corpus and QA set
+```powershell
+$env:PYTHONPATH="src"
+pytest tests/ -q
 python scripts/run_eval.py
-
-# serve the API
-uvicorn rag_qa.api:app --app-dir src --reload
 ```
 
-Then:
+**Mac or Linux**
 
 ```bash
-curl -X POST localhost:8000/ingest -H 'content-type: application/json' -d '{}'
-curl -X POST localhost:8000/ask -H 'content-type: application/json' \
-     -d '{"question": "How does RAG reduce hallucination?"}'
+PYTHONPATH=src pytest tests/ -q
+python scripts/run_eval.py
 ```
 
-### Optional upgrades
+The 18 tests cover chunking, embeddings, retrieval, cited answers, evaluation, the browser page, browser document ingestion, validation, and the empty-index error. The bundled evaluation set reports hit@4, mean reciprocal rank, and a transparent lexical faithfulness score.
+
+## Optional higher-quality models
+
+The app does not need these to work.
 
 ```bash
-pip install sentence-transformers   # neural embeddings
-pip install openai                  # LLM generation
+pip install sentence-transformers
+pip install openai
+```
 
+Set environment variables in your own terminal, never in committed files:
+
+```bash
 export RAG_EMBEDDER=sentence-transformers
-export OPENAI_API_KEY=...           # or point OPENAI_BASE_URL at a local server
+export OPENAI_API_KEY=your-key
 export RAG_MODEL=gpt-4o-mini
 ```
 
-## Evaluation
-
-`scripts/run_eval.py` scores the pipeline on the labelled set in
-`eval/qa_pairs.jsonl` (questions with their expected source documents) and
-reports:
-
-- **hit@k** - how often an expected source appears in the top-k passages
-- **MRR** - mean reciprocal rank of the first expected source
-- **faithfulness** - fraction of answer sentences supported by the retrieved
-  passages (a transparent lexical proxy, not a neural judge)
-
-Current offline baseline (hashing embedder, extractive generator, 9 chunks
-from `sample_data/`, 8 questions): **hit@4 = 1.00, MRR = 0.81,
-faithfulness = 0.97**. Reproduce with `python scripts/run_eval.py`.
-
 ## Project layout
 
-```
+```text
 src/rag_qa/
-  chunking.py     paragraph-aware splitter with character overlap
-  embeddings.py   hashing + sentence-transformers embedders (L2-normalized)
-  store.py        in-memory vector store, cosine search, save/load
-  pipeline.py     retriever, offline + OpenAI-compatible generators, RAGPipeline
-  api.py          FastAPI service: /health, /ingest, /ask
-  evaluate.py     hit@k, MRR, faithfulness over a labelled QA set
+  api.py             API endpoints and browser app entry point
+  static/index.html  minimal upload, question, answer, and citation UI
+  chunking.py        paragraph-aware splitting
+  embeddings.py      offline hashing + optional neural embeddings
+  store.py           in-memory vector store
+  pipeline.py        retrieval and grounded answer generation
+  evaluate.py        retrieval and faithfulness metrics
 scripts/run_eval.py
-tests/            14 tests: chunking, embeddings, pipeline, evaluation
-sample_data/      three documents the demo indexes
-eval/qa_pairs.jsonl
+sample_data/          bundled demo documents
+eval/qa_pairs.jsonl   labelled evaluation questions
+tests/                18 automated tests
 ```
 
-## Testing strategy
+## Common errors
 
-- **Unit tests** pin deterministic behavior: chunk size limits and overlap,
-  normalized and reproducible embeddings, similarity ordering.
-- **Integration tests** run the whole pipeline on a fixed corpus and assert
-  the right document ranks first and answers cite their sources.
-- **Regression evaluation** re-scores the labelled QA set after any change
-  to chunking, embeddings, or generation; metric drops are treated like
-  failing tests.
-
-## Roadmap
-
-- FAISS or Chroma backend for larger corpora
-- Hybrid lexical + vector retrieval (BM25 + embeddings)
-- Cross-encoder re-ranking of retrieved passages
-- LLM-as-judge faithfulness scoring alongside the lexical proxy
-- Docker image and CI workflow
+- **`python is not recognized`** - reinstall Python and tick **Add python.exe to PATH**.
+- **PowerShell blocks activation** - run `Set-ExecutionPolicy -Scope Process Bypass`, then `.venv\Scripts\activate` again.
+- **`No module named uvicorn`** - activate `.venv`, then run `pip install -r requirements.txt`.
+- **Port 8000 is already in use** - start with `uvicorn rag_qa.api:app --app-dir src --port 8001`, then open http://127.0.0.1:8001.
+- **The app says to add documents first** - upload at least one non-empty `.md` or `.txt` file before asking.
+- **You selected a PDF or Word file** - this version accepts plain text and Markdown only. Save or export the document as `.txt` first.
 
 ## License
 
