@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Ask questions and get cited answers from your own documents.">
+  <title>Grounded - Document Q&A</title>
+  <style>
+    :root { color-scheme: light; --ink:#17211b; --muted:#667069; --line:#dfe5df; --paper:#fbfcf9; --card:#fff; --green:#276749; --green-soft:#eaf4ed; --shadow:0 18px 50px rgba(34,55,42,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 15% 0%,#edf5eb 0,transparent 32rem),var(--paper); color:var(--ink); font:16px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input { font:inherit; }
+    .shell { width:min(920px,calc(100% - 32px)); margin:0 auto; padding:72px 0 88px; }
+    header { max-width:700px; margin-bottom:40px; }
+    .eyebrow { display:flex; align-items:center; gap:9px; margin:0 0 14px; color:var(--green); font-size:.78rem; font-weight:750; letter-spacing:.12em; text-transform:uppercase; }
+    .spark { width:9px; height:9px; border-radius:50%; background:#47a36b; box-shadow:0 0 0 5px rgba(71,163,107,.12); }
+    h1 { margin:0; max-width:680px; font-family:Georgia,"Times New Roman",serif; font-size:clamp(2.8rem,7vw,5rem); font-weight:500; line-height:.98; letter-spacing:-.045em; }
+    .intro { max-width:580px; margin:22px 0 0; color:var(--muted); font-size:1.06rem; }
+    .panel { background:rgba(255,255,255,.86); border:1px solid rgba(218,226,219,.9); border-radius:24px; box-shadow:var(--shadow); overflow:hidden; backdrop-filter:blur(12px); }
+    .step { padding:28px; }
+    .step + .step { border-top:1px solid var(--line); }
+    .step-title { display:flex; align-items:center; gap:12px; margin:0 0 18px; font-size:.92rem; font-weight:740; }
+    .number { display:grid; width:28px; height:28px; place-items:center; border-radius:9px; background:var(--green-soft); color:var(--green); font-size:.78rem; }
+    .drop { display:block; padding:30px 22px; border:1.5px dashed #b8c6ba; border-radius:16px; background:#fcfdfb; text-align:center; cursor:pointer; transition:.2s ease; }
+    .drop:hover,.drop.drag { border-color:#57906a; background:#f3f8f2; transform:translateY(-1px); }
+    .drop strong { display:block; margin-bottom:5px; font-size:1rem; }
+    .drop span { color:var(--muted); font-size:.88rem; }
+    #files { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+    .file { padding:7px 10px; border-radius:9px; background:var(--green-soft); color:#315c42; font-size:.82rem; }
+    .ask-row { display:flex; gap:10px; }
+    input[type=text] { min-width:0; flex:1; padding:15px 17px; border:1px solid #cfd8d0; border-radius:13px; background:#fff; color:var(--ink); outline:none; transition:.2s; }
+    input[type=text]:focus { border-color:#57906a; box-shadow:0 0 0 4px rgba(87,144,106,.12); }
+    button { padding:14px 22px; border:0; border-radius:13px; background:var(--ink); color:white; font-weight:700; cursor:pointer; transition:.2s; }
+    button:hover { background:#2b3d31; transform:translateY(-1px); }
+    button:disabled { opacity:.52; cursor:not-allowed; transform:none; }
+    .status { min-height:24px; margin:12px 0 0; color:var(--muted); font-size:.87rem; }
+    .status.error { color:#a13f39; }
+    #result[hidden] { display:none; }
+    .answer { margin:0; font-family:Georgia,"Times New Roman",serif; font-size:1.3rem; line-height:1.65; }
+    .sources-head { display:flex; align-items:center; justify-content:space-between; margin:28px 0 12px; }
+    .sources-head h2 { margin:0; font-size:.84rem; letter-spacing:.1em; text-transform:uppercase; }
+    .sources-head span { color:var(--muted); font-size:.8rem; }
+    .sources { display:grid; gap:10px; }
+    .source { padding:16px; border:1px solid var(--line); border-radius:14px; background:#fcfdfb; }
+    .source-top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; }
+    .source-name { overflow:hidden; font-weight:730; text-overflow:ellipsis; white-space:nowrap; }
+    .score { flex:none; color:var(--green); font-size:.78rem; font-weight:720; }
+    .source p { margin:0; color:#556058; font-size:.88rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+    footer { margin-top:20px; text-align:center; color:#899089; font-size:.78rem; }
+    @media (max-width:640px) { .shell{padding-top:46px}.step{padding:22px}.ask-row{flex-direction:column}button{width:100%} }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <p class="eyebrow"><span class="spark"></span>Private, local document Q&amp;A</p>
+      <h1>Answers grounded in your words.</h1>
+      <p class="intro">Add Markdown or text files, ask a question, and see the exact passages behind every answer. Your documents stay on this computer.</p>
+    </header>
+
+    <section class="panel" aria-label="Document question answering">
+      <div class="step">
+        <h2 class="step-title"><span class="number">1</span>Add your documents</h2>
+        <label class="drop" id="drop">
+          <strong>Drop files here, or choose files</strong>
+          <span>Markdown and plain text · up to 20 files</span>
+          <input id="fileInput" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden>
+        </label>
+        <div id="files" aria-live="polite"></div>
+        <p id="uploadStatus" class="status" aria-live="polite"></p>
+      </div>
+
+      <div class="step">
+        <h2 class="step-title"><span class="number">2</span>Ask a question</h2>
+        <form id="askForm" class="ask-row">
+          <input id="question" type="text" placeholder="What do the documents say about…?" maxlength="2000" autocomplete="off" aria-label="Question">
+          <button id="askButton" type="submit">Ask</button>
+        </form>
+        <p id="askStatus" class="status" aria-live="polite">Add at least one document to begin.</p>
+      </div>
+
+      <div class="step" id="result" hidden>
+        <p id="answer" class="answer"></p>
+        <div class="sources-head"><h2>Sources</h2><span id="sourceCount"></span></div>
+        <div id="sources" class="sources"></div>
+      </div>
+    </section>
+    <footer>Runs offline by default · No API key needed</footer>
+  </main>
+
+  <script>
+    const fileInput=document.querySelector('#fileInput'),drop=document.querySelector('#drop'),filesEl=document.querySelector('#files');
+    const uploadStatus=document.querySelector('#uploadStatus'),askStatus=document.querySelector('#askStatus');
+    const askForm=document.querySelector('#askForm'),question=document.querySelector('#question'),askButton=document.querySelector('#askButton');
+    const result=document.querySelector('#result'),answer=document.querySelector('#answer'),sources=document.querySelector('#sources'),sourceCount=document.querySelector('#sourceCount');
+    let ready=false;
+    const message=(el,text,error=false)=>{el.textContent=text;el.classList.toggle('error',error)};
+    async function api(path,options){const response=await fetch(path,options);const data=await response.json();if(!response.ok)throw new Error(data.detail||'Something went wrong.');return data}
+    async function addFiles(selected){
+      const list=[...selected].slice(0,20); if(!list.length)return;
+      const invalid=list.find(file=>!(/\.(md|txt)$/i.test(file.name))); if(invalid){message(uploadStatus,`${invalid.name}: choose a .md or .txt file.`,true);return}
+      filesEl.innerHTML=''; list.forEach(file=>{const chip=document.createElement('span');chip.className='file';chip.textContent=file.name;filesEl.append(chip)});
+      message(uploadStatus,'Reading and indexing…'); askButton.disabled=true;
+      try { const documents=await Promise.all(list.map(async file=>({name:file.name,text:await file.text()})));
+        const data=await api('/ingest-text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documents})});
+        ready=true; message(uploadStatus,`${data.files.length} ${data.files.length===1?'file':'files'} ready · ${data.chunks_added} searchable passages`); message(askStatus,'Ready for your question.'); question.focus();
+      } catch(error){message(uploadStatus,error.message,true)} finally{askButton.disabled=false}
+    }
+    fileInput.addEventListener('change',()=>addFiles(fileInput.files));
+    ['dragenter','dragover'].forEach(type=>drop.addEventListener(type,event=>{event.preventDefault();drop.classList.add('drag')}));
+    ['dragleave','drop'].forEach(type=>drop.addEventListener(type,event=>{event.preventDefault();drop.classList.remove('drag')}));
+    drop.addEventListener('drop',event=>addFiles(event.dataTransfer.files));
+    askForm.addEventListener('submit',async event=>{
+      event.preventDefault(); const text=question.value.trim();
+      if(!ready){message(askStatus,'Add a document first.',true);return} if(!text){message(askStatus,'Type a question first.',true);question.focus();return}
+      askButton.disabled=true; message(askStatus,'Finding the best passages…'); result.hidden=true;
+      try { const data=await api('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text})});
+        answer.textContent=data.answer; sources.innerHTML=''; data.sources.forEach(item=>{const card=document.createElement('article');card.className='source';
+          const top=document.createElement('div');top.className='source-top';const name=document.createElement('span');name.className='source-name';name.textContent=item.source;
+          const score=document.createElement('span');score.className='score';score.textContent=`${Math.max(0,Math.round(item.score*100))}% match`;const passage=document.createElement('p');passage.textContent=item.text;
+          top.append(name,score);card.append(top,passage);sources.append(card)});
+        sourceCount.textContent=`${data.sources.length} ${data.sources.length===1?'passage':'passages'}`; result.hidden=false; message(askStatus,''); result.scrollIntoView({behavior:'smooth',block:'nearest'});
+      } catch(error){message(askStatus,error.message,true)} finally{askButton.disabled=false}
+    });
+  </script>
+</body>
+</html>
