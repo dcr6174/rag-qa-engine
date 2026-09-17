@@ -6,7 +6,24 @@ The project runs **fully offline by default**. Its deterministic hashing embedde
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-276749) ![Tests](https://img.shields.io/badge/tests-18%20passing-276749) ![License](https://img.shields.io/badge/license-MIT-276749)
 
-## Use the browser app on Windows
+![The running rag-qa-engine browser interface showing an answer and cited source passages](docs/rag-qa-engine-ui.png)
+
+## What it does
+
+1. Reads your `.md` and `.txt` documents.
+2. Splits them into searchable passages and ranks the passages most relevant to your question.
+3. Builds an answer from those passages and shows the source text beside it.
+
+This is a deliberately inspectable RAG baseline. It does not invent unsupported details when the uploaded documents do not contain an answer.
+
+## Prerequisites
+
+- Python 3.10 or newer
+- A modern browser such as Chrome, Edge, Firefox, or Safari
+- About 100 MB of free disk space for the default install
+- No API key, GPU, database, or external model download
+
+## Copy-paste Windows setup
 
 ### 1. Install Python
 
@@ -21,9 +38,9 @@ Click **Code** near the top of this GitHub page, choose **Download ZIP**, and un
 Run these commands one at a time:
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+py -3.10 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
 ### 4. Start the app
@@ -34,21 +51,27 @@ uvicorn rag_qa.api:app --app-dir src
 
 Leave PowerShell open. Visit **http://127.0.0.1:8000** in Chrome or Edge.
 
-### 5. Ask your documents
+### 5. Try the first example
 
-1. Drop `.md` or `.txt` files into the upload area, or click it to choose files.
-2. Wait until the page says the files are ready.
-3. Type a question and click **Ask**.
-4. Read the answer and its source cards. Each card names the source file, shows its retrieval match, and includes the exact supporting passage.
+1. Upload `sample_data/rag_overview.md` from the project folder.
+2. Wait for **1 file ready**.
+3. Ask: **How does RAG reduce hallucination?**
+4. Click **Ask**.
+
+### Expected output
+
+You should see an answer explaining that RAG grounds its response in retrieved passages rather than relying only on model memory. Under **Sources**, the app shows citation cards from `rag_overview.md`, each with a match percentage and the exact supporting passage. The wording and percentage may vary if you enable an optional model, but the answer must remain tied to visible source text.
+
+To use your own material, drop one or more `.md` or `.txt` files into the upload area, wait until they are ready, and ask a question.
 
 The browser sends document text only to the app running on your own computer. The default setup does not upload it to an external service. Stop the app with `Ctrl+C` in PowerShell.
 
 ## Mac or Linux setup
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 uvicorn rag_qa.api:app --app-dir src
 ```
 
@@ -160,7 +183,7 @@ tests/                18 automated tests
 
 ## Common errors
 
-- **`python is not recognized`** - reinstall Python and tick **Add python.exe to PATH**.
+- **`py` or `python` is not recognized** - reinstall Python from python.org and tick **Add python.exe to PATH**.
 - **PowerShell blocks activation** - run `Set-ExecutionPolicy -Scope Process Bypass`, then `.venv\Scripts\activate` again.
 - **`No module named uvicorn`** - activate `.venv`, then run `pip install -r requirements.txt`.
 - **Port 8000 is already in use** - start with `uvicorn rag_qa.api:app --app-dir src --port 8001`, then open http://127.0.0.1:8001.
