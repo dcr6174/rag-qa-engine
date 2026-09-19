@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run the evaluation harness: python scripts/run_eval.py"""
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -25,7 +25,10 @@ def main() -> None:
         else:
             flag = "HIT " if detail["hit"] else "MISS"
             extra = " (abstained)" if detail.get("abstained") else ""
-            print(f"[{flag}] {detail['question']} (rank={detail['rank']}, faithfulness={detail['faithfulness']}){extra}")
+            print(
+                f"[{flag}] {detail['question']} "
+                f"(rank={detail['rank']}, faithfulness={detail['faithfulness']}){extra}"
+            )
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ Local RAG with citations is the most-built project on GitHub. This one's center 
 
 The project runs **fully offline by default**. Its deterministic hashing embedder, BM25 index, lexical reranker, and extractive answer generator need no downloads, API keys, or network connection after installation.
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-276749) ![Tests](https://img.shields.io/badge/tests-67%20passing-276749) ![License](https://img.shields.io/badge/license-MIT-276749)
+![Python](https://img.shields.io/badge/Python-3.10%2B-276749) ![Tests](https://img.shields.io/badge/tests-70%20passing-276749) ![License](https://img.shields.io/badge/license-MIT-276749)
 [![CI](https://github.com/dcr6174/rag-qa-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/dcr6174/rag-qa-engine/actions/workflows/ci.yml)
 
 ![The answer screen: sentence-level citations, relevance bands, and highlighted source spans](docs/rag-qa-engine-ui.png)
@@ -99,6 +99,15 @@ uvicorn rag_qa.api:app --app-dir src
 
 Then open http://127.0.0.1:8000.
 
+## Docker
+
+```bash
+docker build -t rag-qa-engine .
+docker run --rm -p 8000:8000 rag-qa-engine
+```
+
+Then open http://127.0.0.1:8000. The image installs only the core (offline) dependencies; mount a volume and set `RAG_ALLOWED_ROOTS` if you want `/ingest` or `/store/save` to reach paths outside the container's `/app`.
+
 ## API
 
 The interactive API docs live at http://127.0.0.1:8000/docs.
@@ -125,7 +134,11 @@ Endpoints:
 - `POST /sweep` - config sweep (chunk size, overlap, k) with a ranked leaderboard
 - `POST /store/save`, `POST /store/load` - persist and reload the index; loading refuses mismatched build settings
 
-`/ingest`, `/store/save`, and `/store/load` take a filesystem path from the caller. By default they only accept paths inside the project directory - set `RAG_ALLOWED_ROOTS` (an `os.pathsep`-separated list of directories) to permit additional paths elsewhere. This app is meant to run on `127.0.0.1` for a single local user; do not expose it on a shared network without adding authentication in front of it.
+## Security notes
+
+This app is meant to run on `127.0.0.1` for a single local user. It has no authentication, and the pipeline and conversation history are one process-wide instance shared by every request - fine for one person on their own machine, not for a shared or multi-tenant deployment. Do not expose it on a shared network without adding authentication in front of it.
+
+`/ingest`, `/store/save`, and `/store/load` take a filesystem path from the caller. By default they only accept paths inside the project directory - set `RAG_ALLOWED_ROOTS` (an `os.pathsep`-separated list of directories) to permit additional paths elsewhere.
 
 ## Evaluation
 
@@ -199,7 +212,7 @@ src/rag_qa/
 scripts/             run_eval.py, run_sweep.py, generate_eval.py
 sample_data/         bundled demo documents
 eval/qa_pairs.jsonl  labelled questions plus a no-answer subset
-tests/               67 automated tests
+tests/               70 automated tests
 ```
 
 ## Testing
@@ -219,7 +232,17 @@ PYTHONPATH=src pytest tests/ -q
 python scripts/run_eval.py
 ```
 
-The 67 tests are built for a retrieval system, not a demo:
+For lint, formatting, and type checks (also run in CI):
+
+```bash
+ruff check src/ tests/ scripts/
+black --check src/ tests/ scripts/
+mypy src/rag_qa/
+```
+
+The eval numbers above are only guaranteed reproducible against the exact dependency versions pinned in `requirements-lock.txt` (`pip install -r requirements-lock.txt -e .`); numpy and pypdf version changes can shift them slightly.
+
+The 70 tests are built for a retrieval system, not a demo:
 
 - **eval-as-regression** - the fixture corpus must stay above hit@k / MRR / faithfulness floors and below a false-answer ceiling, so a chunker change that quietly hurts retrieval fails CI
 - **golden chunk boundaries** - block kinds, breadcrumbs, atomic tables and code blocks on a fixture document

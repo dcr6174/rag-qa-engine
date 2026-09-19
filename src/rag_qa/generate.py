@@ -12,9 +12,17 @@ from __future__ import annotations
 
 import os
 import re
+from typing import Protocol
 
 from .bm25 import tokenize
 from .retrieval import RetrievalResult
+
+
+class Generator(Protocol):
+    """What RAGPipeline needs from an answer generator, offline or hosted."""
+
+    def generate(self, question: str, passages: list[RetrievalResult]) -> str: ...
+
 
 _UNTRUSTED_SYSTEM_PROMPT = (
     "You answer questions using retrieved document excerpts.\n"

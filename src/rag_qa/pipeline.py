@@ -13,20 +13,22 @@ v0.3 turns the demo into an evaluation-first RAG system:
 from __future__ import annotations
 
 import os
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import numpy as np
 
 from .chunking import split_markdown
 from .citations import ABSTENTION_THRESHOLD, Citation, link_citations, should_abstain
 from .embeddings import get_embedder
-from .generate import default_generator, rewrite_query
+from .generate import Generator, default_generator, rewrite_query
 from .rerank import get_reranker
 from .retrieval import HybridRetriever, RetrievalResult
 from .store import VectorStore
 
 CHUNKER_VERSION = "markdown-v2"
-
-import re
 
 _SOURCE_MARK_RE = re.compile(r"\s*\[source:[^\]]*\]")
 
@@ -50,7 +52,7 @@ class RAGPipeline:
     def __init__(
         self,
         embedder_kind: str | None = None,
-        generator: object | None = None,
+        generator: Generator | None = None,
         reranker_kind: str | None = None,
         chunk_size: int = 600,
         overlap: int = 100,
@@ -96,16 +98,17 @@ class RAGPipeline:
             self.store.remove_source(source)
 
         new_chunks = [c for c in chunks if c.content_hash not in reusable]
-        embedded: dict[str, object] = {}
+        embedded: dict[str, np.ndarray] = {}
         if new_chunks:
             vectors = self.embedder.embed([c.embed_text for c in new_chunks])
             embedded = {c.content_hash: vectors[i] for i, c in enumerate(new_chunks)}
 
-        import numpy as np
-
-        all_vectors = np.vstack(
-            [reusable.get(c.content_hash, embedded.get(c.content_hash)) for c in chunks]
-        )
+        chunk_vectors: list[np.ndarray] = []
+        for c in chunks:
+            vector = reusable.get(c.content_hash, embedded.get(c.content_hash))
+            assert vector is not None, f"no vector for chunk {c.content_hash} (reused or newly embedded)"
+            chunk_vectors.append(vector)
+        all_vectors = np.vstack(chunk_vectors)
         records = []
         for c in chunks:
             records.append(
@@ -133,7 +136,7 @@ class RAGPipeline:
             self.documents[f"{source}#p{page}"] = text
         return len(new_chunks)
 
-    def ingest_paths(self, paths: list[str | Path]) -> int:
+    def ingest_paths(self, paths: Sequence[str | Path]) -> int:
         """Ingest every supported file in the given files or directories."""
         total = 0
         for path in paths:
@@ -172,7 +175,9 @@ class RAGPipeline:
 
     # ---- retrieval + answering ------------------------------------------
 
-    def retrieve(self, question: str, k: int | None = None) -> tuple[list[RetrievalResult], list[RetrievalResult]]:
+    def retrieve(
+        self, question: str, k: int | None = None
+    ) -> tuple[list[RetrievalResult], list[RetrievalResult]]:
         query_vector = self.embedder.embed([question])[0]
         return self.retriever.retrieve(question, query_vector, k or self.top_k)
 

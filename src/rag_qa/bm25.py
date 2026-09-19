@@ -63,9 +63,7 @@ class BM25Index:
         self._doc_freq = Counter()
         for tf in self._term_freqs:
             self._doc_freq.update(tf.keys())
-        self._avgdl = (
-            sum(self._doc_lengths) / len(self._doc_lengths) if self._doc_lengths else 0.0
-        )
+        self._avgdl = sum(self._doc_lengths) / len(self._doc_lengths) if self._doc_lengths else 0.0
 
     def score(self, query: str, doc_index: int) -> float:
         tf = self._term_freqs[doc_index]

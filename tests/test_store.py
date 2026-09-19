@@ -31,7 +31,9 @@ def test_load_refuses_mismatched_settings(tmp_path):
     with pytest.raises(StoreMismatchError, match="embedding_dim"):
         VectorStore.load(tmp_path, expected_meta={"embedder": "HashingEmbedder", "embedding_dim": 768})
     with pytest.raises(StoreMismatchError, match="embedder"):
-        VectorStore.load(tmp_path, expected_meta={"embedder": "SentenceTransformerEmbedder", "embedding_dim": 384})
+        VectorStore.load(
+            tmp_path, expected_meta={"embedder": "SentenceTransformerEmbedder", "embedding_dim": 384}
+        )
 
 
 def test_load_refuses_store_without_metadata(tmp_path):

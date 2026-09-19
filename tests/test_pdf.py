@@ -1,5 +1,6 @@
-from rag_qa.pdf import extract_pages_from_bytes
 from conftest import make_pdf
+
+from rag_qa.pdf import extract_pages_from_bytes
 
 
 def test_pages_are_extracted_with_numbers():

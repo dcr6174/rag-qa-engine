@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-qa-engine"
-version = "0.3.0"
+version = "0.3.1"
 description = "An evaluation-first, offline-by-default RAG app with hybrid retrieval, abstention, and sentence-level citations."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -22,7 +22,7 @@ dependencies = [
 neural = ["sentence-transformers>=2.7"]
 # LLM answer generation via any OpenAI-compatible endpoint.
 llm = ["openai>=1.30"]
-dev = ["pytest>=8.0", "httpx>=0.27"]
+dev = ["pytest>=8.0", "httpx>=0.27", "ruff>=0.6", "black>=24.0", "mypy>=1.10"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -33,3 +33,25 @@ rag_qa = ["static/*.html"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
+
+[tool.black]
+line-length = 110
+target-version = ["py310"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+# The codebase leans on numpy/FastAPI/pydantic dynamic typing rather than
+# exhaustive annotations; this catches real errors (bad attribute access,
+# wrong return types) without demanding a full annotation pass up front.
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+exclude = ["^tests/", "^scripts/"]

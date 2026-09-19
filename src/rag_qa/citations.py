@@ -15,7 +15,7 @@ as faithfulness. It errs toward flagging, which is the honest direction.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .bm25 import tokenize
 from .retrieval import RetrievalResult

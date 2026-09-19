@@ -44,7 +44,7 @@ def test_generated_qa_pairs_are_grounded_in_the_corpus():
 
 
 def test_sweep_returns_a_ranked_leaderboard():
-    documents = pipeline_docs = _pipeline().documents
+    documents = _pipeline().documents
     pairs = load_qa_pairs("eval/qa_pairs.jsonl")
     leaderboard = sweep(dict(documents), pairs, max_configs=3)
     assert 1 <= len(leaderboard) <= 3

@@ -1,5 +1,6 @@
-from rag_qa.pipeline import RAGPipeline
 from conftest import make_pdf
+
+from rag_qa.pipeline import RAGPipeline
 
 
 def test_answer_includes_citations_sources_and_trace():
@@ -70,5 +71,7 @@ def test_store_load_refuses_different_chunker(tmp_path):
 def test_history_rewrites_followups():
     pipeline = RAGPipeline()
     pipeline.ingest_paths(["sample_data"])
-    result = pipeline.answer("and the second stage?", history=[{"question": "What are the metrics of a RAG evaluation system?"}])
+    result = pipeline.answer(
+        "and the second stage?", history=[{"question": "What are the metrics of a RAG evaluation system?"}]
+    )
     assert "system" in result.rewritten_question

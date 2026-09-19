@@ -7,8 +7,8 @@ writes keyword-style questions.
 """
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -31,7 +31,7 @@ def main() -> None:
         for pair in pairs:
             fh.write(json.dumps(pair, ensure_ascii=False) + "\n")
     print(f"wrote {len(pairs)} QA pairs to {out}")
-    print("tip: add a few {\"question\": ..., \"expected_sources\": [], \"unanswerable\": true}")
+    print('tip: add a few {"question": ..., "expected_sources": [], "unanswerable": true}')
     print("rows to measure the false-answer rate on your corpus")
 
 

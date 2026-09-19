@@ -16,11 +16,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from .citations import ABSTENTION_THRESHOLD
 from .evaluate import evaluate, generate_qa_pairs, load_qa_pairs, sweep
 from .pipeline import RAGPipeline
 
-app = FastAPI(title="rag-qa-engine", version="0.3.0")
+app = FastAPI(title="rag-qa-engine", version="0.3.1")
+
+# One process-wide pipeline and history list, by design: this app targets a
+# single local user (see README "Security notes"). There is no per-session
+# or per-client isolation, so concurrent requests from different callers
+# share one index and one conversation history.
 pipeline = RAGPipeline()
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -104,6 +108,10 @@ def _confine(path: str | Path) -> Path:
             "to permit paths outside the project directory"
         ),
     )
+
+
+def _sse_event(name: str, data: dict) -> str:
+    return f"event: {name}\ndata: {json.dumps(data)}\n\n"
 
 
 def _source_out(r) -> dict:
@@ -227,12 +235,19 @@ def ask_stream(request: AskRequest) -> StreamingResponse:
     del _history[:-12]
 
     def events():
-        yield f"event: sources\ndata: {json.dumps({'sources': [_source_out(s) for s in result.sources], 'abstained': result.abstained, 'rewritten_question': result.rewritten_question})}\n\n"
+        yield _sse_event(
+            "sources",
+            {
+                "sources": [_source_out(s) for s in result.sources],
+                "abstained": result.abstained,
+                "rewritten_question": result.rewritten_question,
+            },
+        )
         if not result.abstained:
             for citation in result.citations:
                 # stream the answer one sentence at a time, in order
-                yield f"event: sentence\ndata: {json.dumps({'text': citation.sentence, 'entailed': citation.entailed})}\n\n"
-        yield f"event: done\ndata: {json.dumps(_answer_payload(result))}\n\n"
+                yield _sse_event("sentence", {"text": citation.sentence, "entailed": citation.entailed})
+        yield _sse_event("done", _answer_payload(result))
 
     return StreamingResponse(events(), media_type="text/event-stream")
 
