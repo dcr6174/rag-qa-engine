@@ -135,8 +135,6 @@ class RAGPipeline:
 
     def ingest_paths(self, paths: list[str | Path]) -> int:
         """Ingest every supported file in the given files or directories."""
-        from .pdf import extract_pages
-
         total = 0
         for path in paths:
             path = Path(path)

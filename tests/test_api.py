@@ -110,7 +110,8 @@ def test_sweep_leaderboard():
     assert len(response.json()["leaderboard"]) >= 1
 
 
-def test_store_save_load_and_mismatch(tmp_path):
+def test_store_save_load_and_mismatch(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAG_ALLOWED_ROOTS", str(tmp_path))
     _index_samples()
     save = client.post("/store/save", json={"directory": str(tmp_path / "s")})
     assert save.status_code == 200
@@ -118,3 +119,18 @@ def test_store_save_load_and_mismatch(tmp_path):
     assert load.status_code == 200
     missing = client.post("/store/load", json={"directory": str(tmp_path / "nope")})
     assert missing.status_code in (404, 409)
+
+
+def test_store_save_rejects_path_outside_allowed_root(tmp_path):
+    # No RAG_ALLOWED_ROOTS set: only the project directory is allowed, so a
+    # pytest tmp_path (elsewhere on disk) must be rejected rather than
+    # silently written to - the API is not an arbitrary file-write endpoint.
+    _index_samples()
+    response = client.post("/store/save", json={"directory": str(tmp_path / "s")})
+    assert response.status_code == 400
+
+
+def test_ingest_rejects_path_outside_allowed_root(tmp_path):
+    (tmp_path / "note.md").write_text("secret content", encoding="utf-8")
+    response = client.post("/ingest", json={"paths": [str(tmp_path)]})
+    assert response.status_code == 400

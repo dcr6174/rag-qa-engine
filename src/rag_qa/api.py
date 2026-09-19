@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -75,6 +76,36 @@ class StoreRequest(BaseModel):
     directory: str = Field(min_length=1, max_length=500)
 
 
+def _allowed_roots() -> list[Path]:
+    """Base directories the filesystem-path endpoints may read or write under.
+
+    ``/ingest``, ``/store/save``, and ``/store/load`` take a caller-supplied
+    path; without this check they are an arbitrary file read/write primitive
+    for anyone who can reach the port. The project directory is always
+    allowed; set RAG_ALLOWED_ROOTS (os.pathsep separated directories) to
+    permit additional paths elsewhere.
+    """
+    roots = [PROJECT_ROOT]
+    raw = os.environ.get("RAG_ALLOWED_ROOTS")
+    if raw:
+        roots.extend(Path(p).expanduser().resolve() for p in raw.split(os.pathsep) if p)
+    return roots
+
+
+def _confine(path: str | Path) -> Path:
+    """Resolve *path* and reject it if it falls outside every allowed root."""
+    resolved = Path(path).expanduser().resolve()
+    if any(resolved == root or root in resolved.parents for root in _allowed_roots()):
+        return resolved
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            f"{resolved} is outside the allowed root(s); set RAG_ALLOWED_ROOTS "
+            "to permit paths outside the project directory"
+        ),
+    )
+
+
 def _source_out(r) -> dict:
     return {
         "source": r.source,
@@ -116,7 +147,8 @@ def health() -> dict:
 
 @app.post("/ingest")
 def ingest(request: IngestRequest) -> dict:
-    added = pipeline.ingest_paths(request.paths)
+    paths = [_confine(p) for p in request.paths]
+    added = pipeline.ingest_paths(paths)
     if added == 0 and len(pipeline.store) == 0:
         raise HTTPException(status_code=400, detail="no supported documents found at the given paths")
     return {"chunks_embedded": added, "indexed_chunks": len(pipeline.store)}
@@ -248,18 +280,20 @@ def run_sweep(request: SweepRequest) -> dict:
 @app.post("/store/save")
 def store_save(request: StoreRequest) -> dict:
     _require_index()
-    pipeline.save_store(request.directory)
-    return {"saved": request.directory, "indexed_chunks": len(pipeline.store), "meta": pipeline.store_meta()}
+    directory = _confine(request.directory)
+    pipeline.save_store(directory)
+    return {"saved": str(directory), "indexed_chunks": len(pipeline.store), "meta": pipeline.store_meta()}
 
 
 @app.post("/store/load")
 def store_load(request: StoreRequest) -> dict:
     from .store import StoreMismatchError
 
+    directory = _confine(request.directory)
     try:
-        pipeline.load_store(request.directory)
+        pipeline.load_store(directory)
     except StoreMismatchError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"no store found at {request.directory}") from exc
-    return {"loaded": request.directory, "indexed_chunks": len(pipeline.store)}
+        raise HTTPException(status_code=404, detail=f"no store found at {directory}") from exc
+    return {"loaded": str(directory), "indexed_chunks": len(pipeline.store)}
