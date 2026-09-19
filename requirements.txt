@@ -1,3 +1,5 @@
+# Kept for the copy-paste setup in README.md; the canonical dependency
+# list (with optional extras) lives in pyproject.toml.
 # Core (API + evaluation)
 fastapi>=0.110
 pypdf>=4.0  # PDF ingestion with page-anchored citations (pure Python)

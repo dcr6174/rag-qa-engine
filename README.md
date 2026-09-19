@@ -7,6 +7,7 @@ Local RAG with citations is the most-built project on GitHub. This one's center 
 The project runs **fully offline by default**. Its deterministic hashing embedder, BM25 index, lexical reranker, and extractive answer generator need no downloads, API keys, or network connection after installation.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-276749) ![Tests](https://img.shields.io/badge/tests-67%20passing-276749) ![License](https://img.shields.io/badge/license-MIT-276749)
+[![CI](https://github.com/dcr6174/rag-qa-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/dcr6174/rag-qa-engine/actions/workflows/ci.yml)
 
 ![The answer screen: sentence-level citations, relevance bands, and highlighted source spans](docs/rag-qa-engine-ui.png)
 
@@ -123,6 +124,8 @@ Endpoints:
 - `POST /evaluate` - run a labelled QA set, or generate one from the indexed corpus
 - `POST /sweep` - config sweep (chunk size, overlap, k) with a ranked leaderboard
 - `POST /store/save`, `POST /store/load` - persist and reload the index; loading refuses mismatched build settings
+
+`/ingest`, `/store/save`, and `/store/load` take a filesystem path from the caller. By default they only accept paths inside the project directory - set `RAG_ALLOWED_ROOTS` (an `os.pathsep`-separated list of directories) to permit additional paths elsewhere. This app is meant to run on `127.0.0.1` for a single local user; do not expose it on a shared network without adding authentication in front of it.
 
 ## Evaluation
 

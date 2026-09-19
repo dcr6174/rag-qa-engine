@@ -8,3 +8,6 @@ venv/
 *.index
 data/store/
 .DS_Store
+*.egg-info/
+build/
+dist/
