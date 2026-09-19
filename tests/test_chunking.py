@@ -1,17 +1,24 @@
 """Golden chunk boundaries, atomic blocks, breadcrumbs, and offset stability."""
 
 import pytest
+from conftest import FIXTURE_DOC
 
 from rag_qa.chunking import parse_blocks, split_text
-from conftest import FIXTURE_DOC
 
 
 def test_golden_block_boundaries():
     kinds = [b.kind for b in parse_blocks(FIXTURE_DOC)]
     assert kinds == [
-        "heading", "paragraph",
-        "heading", "paragraph", "table", "paragraph",
-        "heading", "paragraph", "code", "paragraph",
+        "heading",
+        "paragraph",
+        "heading",
+        "paragraph",
+        "table",
+        "paragraph",
+        "heading",
+        "paragraph",
+        "code",
+        "paragraph",
     ]
 
 
@@ -47,6 +54,23 @@ def test_code_blocks_are_never_split():
     assert "client.retry(backoff=2)" in code_chunks[0].text
 
 
+def test_fence_only_closes_on_its_own_marker():
+    # A ``` block containing a literal "~~~" line (e.g. shown as example text)
+    # must not be closed early by that unrelated fence marker.
+    text = (
+        "# Doc\n\n"
+        "```text\n"
+        "use ~~~ for a tilde fence\n"
+        "still inside the code block\n"
+        "```\n\n"
+        "After the code block.\n"
+    )
+    blocks = parse_blocks(text)
+    code = next(b for b in blocks if b.kind == "code")
+    assert "still inside the code block" in code.text
+    assert "After the code block." not in code.text
+
+
 def test_long_paragraph_splits_at_sentence_boundaries():
     text = "First sentence here. Second sentence follows. Third sentence ends it. " * 20
     chunks = split_text(text, "long.txt", chunk_size=140, overlap=0)
@@ -60,9 +84,7 @@ def test_overlap_never_seeds_mid_word():
     chunks = split_text(text, "overlap.txt", chunk_size=120, overlap=40)
     for chunk in chunks:
         first = chunk.text.split(" ", 1)[0]
-        assert first.rstrip(".") in {
-            "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"
-        }
+        assert first.rstrip(".") in {"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"}
 
 
 def test_parent_text_is_the_enclosing_section():

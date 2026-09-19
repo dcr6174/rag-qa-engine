@@ -1,10 +1,10 @@
 import base64
 
 import pytest
+from conftest import make_pdf
 from fastapi.testclient import TestClient
 
 from rag_qa.api import app, pipeline
-from conftest import make_pdf
 
 client = TestClient(client_base := None) if False else TestClient(app)
 
@@ -71,7 +71,9 @@ def test_ingest_text_roundtrip():
 
 def test_ingest_pdf_with_page_anchors():
     payload = base64.b64encode(make_pdf(["Timeout is 30 seconds"])).decode()
-    response = client.post("/ingest-pdf", json={"documents": [{"name": "manual.pdf", "data_base64": payload}]})
+    response = client.post(
+        "/ingest-pdf", json={"documents": [{"name": "manual.pdf", "data_base64": payload}]}
+    )
     assert response.status_code == 200
     data = client.post("/ask", json={"question": "What is the timeout?"}).json()
     assert data["abstained"] is False

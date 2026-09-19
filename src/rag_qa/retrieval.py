@@ -13,7 +13,7 @@ reranked) so the UI can show its work instead of one opaque score.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .bm25 import BM25Index
 from .rerank import band_for_score

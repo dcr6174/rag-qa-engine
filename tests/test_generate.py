@@ -1,4 +1,4 @@
-from rag_qa.generate import OfflineGenerator, _UNTRUSTED_SYSTEM_PROMPT, rewrite_query
+from rag_qa.generate import _UNTRUSTED_SYSTEM_PROMPT, rewrite_query
 
 
 def test_followup_questions_are_rewritten_standalone():

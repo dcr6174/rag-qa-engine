@@ -129,7 +129,7 @@ class VectorStore:
             json.dump(store_meta, fh, indent=2, sort_keys=True)
 
     @classmethod
-    def load(cls, directory: str | Path, expected_meta: dict | None = None) -> "VectorStore":
+    def load(cls, directory: str | Path, expected_meta: dict | None = None) -> VectorStore:
         """Load a store, refusing one built with different model/chunker settings."""
         directory = Path(directory)
         meta_path = directory / "store_meta.json"

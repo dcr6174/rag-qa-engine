@@ -70,7 +70,6 @@ def _hash(text: str) -> str:
 def parse_blocks(text: str) -> list[Block]:
     """Parse *text* into structural blocks with absolute character offsets."""
     blocks: list[Block] = []
-    pos = 0
     lines = text.split("\n")
     offsets = []
     cursor = 0
@@ -93,16 +92,18 @@ def parse_blocks(text: str) -> list[Block]:
 
         heading = _HEADING_RE.match(line)
         if heading:
-            blocks.append(
-                Block("heading", heading.group(2), offsets[i], block_end(i), len(heading.group(1)))
-            )
+            blocks.append(Block("heading", heading.group(2), offsets[i], block_end(i), len(heading.group(1))))
             i += 1
             continue
 
-        if _FENCE_RE.match(line):
-            fence = _FENCE_RE.match(line).group(1)
+        fence_open = _FENCE_RE.match(line)
+        if fence_open:
+            # Close on the same fence marker that opened the block: a ```
+            # block must not be closed early by an unrelated ~~~ line (or
+            # vice versa), which would otherwise split the block in half.
+            close_re = re.compile(r"^\s*" + re.escape(fence_open.group(1)))
             j = i + 1
-            while j < n and not _FENCE_RE.match(lines[j]):
+            while j < n and not close_re.match(lines[j]):
                 j += 1
             j = min(j, n - 1)  # closing fence line, or EOF
             start, end = offsets[i], block_end(j)
@@ -121,8 +122,10 @@ def parse_blocks(text: str) -> list[Block]:
 
         if _LIST_RE.match(line):
             j = i
-            while j + 1 < n and lines[j + 1].strip() and (
-                _LIST_RE.match(lines[j + 1]) or lines[j + 1].startswith((" ", "\t"))
+            while (
+                j + 1 < n
+                and lines[j + 1].strip()
+                and (_LIST_RE.match(lines[j + 1]) or lines[j + 1].startswith((" ", "\t")))
             ):
                 j += 1
             start, end = offsets[i], block_end(j)
@@ -169,9 +172,7 @@ def _sections(blocks: list[Block]) -> list[_Section]:
             heading_stack.append((block.level, block.text))
             if current.blocks:
                 sections.append(current)
-            current = _Section(
-                breadcrumb=" > ".join(title for _, title in heading_stack)
-            )
+            current = _Section(breadcrumb=" > ".join(title for _, title in heading_stack))
         else:
             current.blocks.append(block)
     if current.blocks:
@@ -198,16 +199,19 @@ def _split_long_paragraph(block: Block, chunk_size: int) -> list[Block]:
         piece_text = text[start : start + cut].strip()
         lead = len(text[start : start + cut]) - len(text[start : start + cut].lstrip())
         pieces.append(
-            Block("paragraph", piece_text, block.start + start + lead,
-                  block.start + start + lead + len(piece_text))
+            Block(
+                "paragraph",
+                piece_text,
+                block.start + start + lead,
+                block.start + start + lead + len(piece_text),
+            )
         )
         start += cut
     tail = text[start:].strip()
     if tail:
         lead = len(text[start:]) - len(text[start:].lstrip())
         pieces.append(
-            Block("paragraph", tail, block.start + start + lead,
-                  block.start + start + lead + len(tail))
+            Block("paragraph", tail, block.start + start + lead, block.start + start + lead + len(tail))
         )
     return pieces
 

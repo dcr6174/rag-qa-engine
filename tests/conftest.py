@@ -42,7 +42,8 @@ def make_pdf(page_texts):
         content_id = 3 + len(page_texts) + i
         objects.append(
             f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-            f"/Contents {content_id} 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> >>"
+            f"/Contents {content_id} 0 R /Resources << /Font << /F1 << /Type /Font "
+            f"/Subtype /Type1 /BaseFont /Helvetica >> >> >> >>"
         )
     for text in page_texts:
         stream = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET"
@@ -57,9 +58,9 @@ def make_pdf(page_texts):
         pos += len(chunk)
     xref_pos = pos
     n = len(objects) + 1
-    xref = "xref\n0 %d\n0000000000 65535 f \n" % n
+    xref = f"xref\n0 {n}\n0000000000 65535 f \n"
     for off in offsets:
-        xref += "%010d 00000 n \n" % off
+        xref += f"{off:010d} 00000 n \n"
     out.append(xref)
     out.append(f"trailer\n<< /Size {n} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF")
     return "\n".join(out).encode()
